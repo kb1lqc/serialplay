@@ -1,6 +1,7 @@
 import io
 import serial
 import random
+from collections import deque
 
 # Frame constants
 SYNC = b'\xBE\xEF'
@@ -14,6 +15,33 @@ def make_frame():
 
 def make_noise():
     return bytes(random.randint(0, 255) for _ in range(random.randint(1,4)))
+
+def find_sync(buffer):
+    buf = list(buffer)
+    for i in range(len(buf) - 1):
+         if buf[i] == 0xBE and buf[i + 1] == 0xEF:
+              return i
+    return -1
+
+def read_serial_stream(stream, chunk_size=8):
+     buffer = deque()
+     while True:
+        chunk = stream.read(chunk_size)
+        # no bytes, stop reading
+        if not chunk:
+            break
+        buffer.extend(chunk)
+        while True:
+            idx = find_sync(buffer)
+            if idx == -1:
+                break
+        
+            print(f"SYNC found at buffer index {idx}")
+            for _ in range(idx):
+                buffer.popleft()
+            # Simulate a single SYNC detection
+            break
+        
 
 if __name__ == "__main__":   
     # Build a fake serial stream
@@ -29,5 +57,4 @@ if __name__ == "__main__":
     stream.seek(0)
 
     # read from the stream
-    data = stream.read()
-    print("Raw stream bytes:", data.hex(" "))
+    read_serial_stream(stream)
